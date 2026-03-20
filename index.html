@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QuickFake - Engine</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dwiozm4vz/image/upload/v1773823344/y82zo4itz6ozaufa4eym.jpg">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22',
+                            950: '#09090b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        .cyber-grid {
+            position: fixed;
+            inset: 0;
+            background-color: #09090b;
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size: 35px 35px;
+            z-index: -1;
+            mask-image: radial-gradient(circle at center 30%, black 30%, transparent 100%);
+            -webkit-mask-image: radial-gradient(circle at center 30%, black 40%, transparent 100%);
+        }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .spinner { border-top-color: transparent; animation: spinner 1s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes loadingBar { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        
+        .glass-input {
+            background: rgba(24, 24, 27, 0.4);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-input:focus {
+            border-color: #cbd5e1;
+            background: rgba(24, 24, 27, 0.7);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-zinc-700 selection:text-white overflow-x-hidden">
+
+    <div id="splashScreen" class="fixed inset-0 z-[100] bg-zinc-950 flex flex-col items-center justify-center transition-opacity duration-700">
+        <img src="https://res.cloudinary.com/dwiozm4vz/image/upload/v1773823344/y82zo4itz6ozaufa4eym.jpg" class="w-24 h-24 rounded-3xl animate-pulse shadow-[0_0_30px_rgba(255,255,255,0.05)] mb-6 object-cover border border-zinc-800">
+        <h1 class="text-3xl font-bold text-white tracking-widest font-mono">QuickFake<span class="text-zinc-600">.</span></h1>
+        <div class="mt-4 w-16 h-1 bg-zinc-800 rounded overflow-hidden">
+            <div class="w-full h-full bg-white animate-[loadingBar_1s_ease-in-out_infinite]"></div>
+        </div>
+    </div>
+
+    <div id="installPopup" class="fixed top-0 left-0 w-full z-50 transform -translate-y-full transition-transform duration-500 flex justify-center pt-4 px-4 pointer-events-none">
+        <div class="bg-zinc-800/95 backdrop-blur-md border border-zinc-700 p-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-md w-full pointer-events-auto">
+            <img src="https://res.cloudinary.com/dwiozm4vz/image/upload/v1773823344/y82zo4itz6ozaufa4eym.jpg" class="w-10 h-10 rounded-xl object-cover">
+            <div class="flex-1">
+                <h3 class="text-sm font-bold text-white">Install QuickFake</h3>
+                <p class="text-[10px] text-zinc-400">Tambahkan ke layar utama</p>
+            </div>
+            <button id="installBtn" class="bg-white text-black px-4 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-zinc-200 transition-colors">Install</button>
+            <button id="closeInstallBtn" class="text-zinc-500 hover:text-white ml-2 px-2 py-1">✕</button>
+        </div>
+    </div>
+
+    <div class="cyber-grid"></div>
+
+    <header class="w-full pt-8 pb-4 px-6 max-w-2xl mx-auto text-center mt-4">
+        <div class="inline-block px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-[10px] font-mono text-zinc-400 mb-3 tracking-widest uppercase shadow-lg">
+            SYS.V.1.0 // ONLINE
+        </div>
+        <h1 class="text-3xl font-bold text-white tracking-tight">QuickFake<span class="text-zinc-600">.</span></h1>
+        <p class="text-xs text-zinc-500 mt-2">Select protocol below to generate mockup.</p>
+    </header>
+
+    <main class="flex-grow w-full max-w-2xl mx-auto px-4 sm:px-6 flex flex-col relative z-10 pb-12">
+        
+        <div class="w-full mb-6">
+            <div id="toolSelector" class="flex overflow-x-auto gap-3 pb-2 pt-2 hide-scroll snap-x">
+                <button type="button" onclick="selectTool(this, '/maker/brat')" class="tool-btn active-tool px-5 py-2.5 rounded-full border border-zinc-300 bg-zinc-200 text-black text-sm font-semibold whitespace-nowrap snap-center transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)]">Brat Text</button>
+                <button type="button" onclick="selectTool(this, '/maker/bratvid')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">Brat Video</button>
+                <button type="button" onclick="selectTool(this, '/maker/fakecall')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">Fake Call</button>
+                <button type="button" onclick="selectTool(this, '/maker/fakedanav2')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">Fake DANA</button>
+                <button type="button" onclick="selectTool(this, '/maker/fakefbcomment')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">FB Comment</button>
+                <button type="button" onclick="selectTool(this, '/maker/fakegroup')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">WA Group</button>
+                <button type="button" onclick="selectTool(this, '/maker/fakeigpost')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">IG Post</button>
+                <button type="button" onclick="selectTool(this, '/maker/faketiktok')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">TikTok Profile</button>
+                <button type="button" onclick="selectTool(this, '/maker/fakettcomment')" class="tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500">TikTok Comment</button>
+            </div>
+        </div>
+
+        <form id="mockupForm" class="space-y-6 w-full">
+            <input type="hidden" id="endpoint" name="endpoint" value="/maker/brat">
+
+            <div id="dynamicFields" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                </div>
+
+            <button type="submit" id="submitBtn" class="w-full mt-8 bg-zinc-100 text-zinc-900 hover:bg-white p-4 rounded-xl font-bold tracking-wide transition-all transform hover:-translate-y-1 flex justify-center items-center shadow-lg">
+                <span>EXECUTE PROCESS</span>
+                <div id="loadingIcon" class="hidden w-5 h-5 border-2 border-zinc-900 rounded-full spinner ml-3"></div>
+            </button>
+        </form>
+
+        <div id="result" class="mt-8 hidden opacity-0 transition-opacity duration-500 w-full">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xs font-mono text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> Output Result
+                </h2>
+                <a id="downloadBtn" href="#" class="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-1.5 rounded-md transition-all font-medium border border-zinc-700 cursor-pointer">Download</a>
+            </div>
+            <div id="mediaContainer" class="rounded-xl overflow-hidden glass-input flex justify-center items-center min-h-[250px] p-2">
+                </div>
+        </div>
+    </main>
+
+    <footer class="w-full border-t border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md mt-auto py-10">
+        <div class="max-w-2xl mx-auto px-4 flex flex-col items-center text-center">
+            
+            <p class="text-[10px] font-mono text-zinc-500 mb-2 uppercase tracking-widest">Connect & Source</p>
+            <p class="text-sm text-zinc-400 mb-6">Info update & web/tools menarik lainnya, join saluran kami</p>
+            
+            <p class="text-[10px] text-zinc-400 font-mono mb-2">✧･ﾟ: [𝙍]𝙝𝙢𝙏 | 𝘾𝙤𝙙𝙚⚙️𝘼𝙄 𝙡 :･ﾟ✧</p>
+
+            <a href="https://whatsapp.com/channel/0029VbBjyjlJ93wa6hwSWa0p" target="_blank" class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-6 py-3 rounded-full transition-all font-semibold text-sm mb-6 shadow-lg transform hover:-translate-y-0.5">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                <span>Join saluran WhatsApp</span>
+            </a>
+
+            <div class="flex items-center gap-6 mb-8">
+                <a href="https://www.instagram.com/rahmt_nhw?igsh=MWQwcnB3bTA2ZnVidg==" target="_blank" class="text-zinc-500 hover:text-white transition-colors group" title="Instagram">
+                    <svg class="w-6 h-6 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                </a>
+                <a href="https://www.tiktok.com/@r_hmtofc?_r=1&_t=ZS-94KRfWQjeUu" target="_blank" class="text-zinc-500 hover:text-white transition-colors group" title="TikTok">
+                    <svg class="w-6 h-6 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1.04-.1z"/></svg>
+                </a>
+                <a href="https://t.me/rAi_engine" target="_blank" class="text-zinc-500 hover:text-white transition-colors group" title="Telegram">
+                    <svg class="w-6 h-6 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                </a>
+            </div>
+
+            <div class="text-[10px] text-zinc-600 border-t border-zinc-800/50 pt-5 w-full flex flex-col items-center">
+                <p class="mb-1">© 2026 QuickFake. All rights reserved.</p>
+                <p>Credit to <span class="text-zinc-400 font-semibold">RhmT</span> | Code AI</p>
+            </div>
+        </div>
+    </footer>
+
+    <div id="toast" class="fixed bottom-6 right-6 px-4 py-2.5 rounded-md text-xs font-medium shadow-2xl transform translate-y-10 opacity-0 transition-all duration-300 z-50 flex items-center gap-2 bg-zinc-900 border border-zinc-700 text-white">
+        <span id="toastIcon" class="flex items-center justify-center w-4 h-4 rounded-full border border-current text-[10px]"></span>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // DAFTARKAN SERVICE WORKER UNTUK PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW Registration failed: ', err));
+            });
+        }
+
+        // LOGIKA SPLASH SCREEN
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splashScreen');
+                splash.classList.add('opacity-0');
+                setTimeout(() => splash.remove(), 700);
+            }, 1500); // Tampil 1.5 detik
+        });
+
+        // LOGIKA POPUP INSTALL PWA (Turun dari atas)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Munculkan popup setelah splash screen hilang (delay 2.5 detik)
+            setTimeout(() => {
+                document.getElementById('installPopup').classList.remove('-translate-y-full');
+            }, 2500);
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            document.getElementById('installPopup').classList.add('-translate-y-full'); // Sembunyikan popup
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            }
+        });
+
+        document.getElementById('closeInstallBtn').addEventListener('click', () => {
+            document.getElementById('installPopup').classList.add('-translate-y-full');
+        });
+
+        // --- MULAI LOGIKA GENERATOR (TIDAK ADA YANG DIKURANGI) ---
+        const generatedResults = {};
+
+        const fieldsConfig = {
+            "/maker/brat": [{ name: "text", type: "text", label: "Teks Brat" }],
+            "/maker/bratvid": [{ name: "text", type: "text", label: "Teks Video Brat" }],
+            "/maker/fakecall": [
+                { name: "nama", type: "text", label: "Nama Pemanggil" },
+                { name: "durasi", type: "text", label: "Durasi / Status" },
+                { name: "avatar", type: "file", label: "Foto Profil" }
+            ],
+            "/maker/fakedanav2": [{ name: "nominal", type: "number", label: "Jumlah Saldo" }],
+            "/maker/fakefbcomment": [
+                { name: "name", type: "text", label: "Nama Pengguna" },
+                { name: "comment", type: "text", label: "Isi Komentar" },
+                { name: "url", type: "file", label: "Foto Profil" }
+            ],
+            "/maker/fakegroup": [
+                { name: "title", type: "text", label: "Nama Grup" },
+                { name: "number", type: "text", label: "Jumlah Anggota / ID" },
+                { name: "time", type: "text", label: "Waktu (ex: 12.00)" },
+                { name: "url", type: "file", label: "Foto Grup" }
+            ],
+            "/maker/fakeigpost": [
+                { name: "username", type: "text", label: "Username IG" },
+                { name: "likes", type: "number", label: "Jumlah Like" },
+                { name: "comment", type: "text", label: "Komentar" },
+                { name: "share", type: "number", label: "Jumlah Share" },
+                { name: "repost", type: "number", label: "Jumlah Repost" },
+                { name: "date", type: "text", label: "Waktu Relatif" },
+                { name: "desc", type: "text", label: "Caption Postingan" },
+                { name: "avatar", type: "file", label: "Foto Profil" },
+                { name: "content", type: "file", label: "Foto Postingan" }
+            ],
+            "/maker/faketiktok": [
+                { name: "name", type: "text", label: "Nama Lengkap" },
+                { name: "username", type: "text", label: "Username TikTok" },
+                { name: "following", type: "text", label: "Jumlah Following" },
+                { name: "followers", type: "text", label: "Jumlah Followers" },
+                { name: "likes", type: "text", label: "Jumlah Likes" },
+                { name: "url", type: "file", label: "Foto Profil" }
+            ],
+            "/maker/fakettcomment": [
+                { name: "username", type: "text", label: "Username TikTok" },
+                { name: "comment", type: "text", label: "Isi Komentar" },
+                { name: "date", type: "text", label: "Waktu Relatif" },
+                { name: "url", type: "file", label: "Foto Profil" }
+            ]
+        };
+
+        function selectTool(btnElement, endpointValue) {
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.className = "tool-btn px-5 py-2.5 rounded-full border border-zinc-700 bg-zinc-900/50 text-zinc-400 text-sm font-medium whitespace-nowrap snap-center transition-all hover:text-white hover:border-zinc-500";
+            });
+            btnElement.className = "tool-btn active-tool px-5 py-2.5 rounded-full border border-zinc-300 bg-zinc-200 text-black text-sm font-semibold whitespace-nowrap snap-center transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)]";
+            
+            document.getElementById('endpoint').value = endpointValue;
+            updateFields();
+
+            const resultBox = document.getElementById('result');
+            const mediaContainer = document.getElementById('mediaContainer');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            // Logika History Gambar Per Tab (Sesuai yg lu minta di sesi sebelumnya)
+            if (generatedResults[endpointValue]) {
+                resultBox.classList.remove('hidden', 'opacity-0');
+                const url = generatedResults[endpointValue];
+                
+                if(endpointValue === '/maker/bratvid') {
+                    mediaContainer.innerHTML = `<video controls autoplay loop class="w-full max-h-[400px] object-contain rounded-lg"><source src="${url}" type="video/mp4"></video>`;
+                } else {
+                    mediaContainer.innerHTML = `<img src="${url}" class="w-full max-h-[400px] object-contain rounded-lg">`;
+                }
+                downloadBtn.href = '/api/download?url=' + encodeURIComponent(url);
+            } else {
+                resultBox.classList.add('hidden', 'opacity-0');
+                mediaContainer.innerHTML = '';
+            }
+        }
+
+        function updateFields() {
+            const ep = document.getElementById('endpoint').value;
+            const container = document.getElementById('dynamicFields');
+            container.innerHTML = '';
+            
+            fieldsConfig[ep]?.forEach(f => {
+                const isFile = f.type === 'file';
+                const inputClass = isFile 
+                    ? "w-full text-sm text-zinc-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-200 file:text-black hover:file:bg-white cursor-pointer glass-input rounded-xl outline-none transition-all p-1" 
+                    : "w-full p-3.5 glass-input text-sm text-white rounded-xl outline-none transition-all placeholder-zinc-600 font-medium";
+                
+                const extraAttr = isFile ? 'accept="image/*"' : '';
+                const colSpan = fieldsConfig[ep].length === 1 ? 'col-span-1 md:col-span-2' : 'col-span-1';
+
+                container.innerHTML += `
+                    <div class="${colSpan}">
+                        <label class="block text-xs font-semibold text-zinc-400 mb-2 pl-1 uppercase tracking-wider">${f.label}</label>
+                        <input type="${f.type}" name="${f.name}" ${extraAttr} class="${inputClass}" placeholder="Enter ${f.label.toLowerCase()}..." required>
+                    </div>`;
+            });
+        }
+
+        let toastTimeout;
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastMessage');
+            
+            clearTimeout(toastTimeout);
+            
+            text.innerText = message;
+            if(type === 'success') {
+                icon.innerHTML = '✓';
+                icon.className = "flex items-center justify-center w-4 h-4 rounded-full border border-green-400 text-green-400 text-[10px]";
+            } else {
+                icon.innerHTML = '✕';
+                icon.className = "flex items-center justify-center w-4 h-4 rounded-full border border-red-400 text-red-400 text-[10px]";
+            }
+
+            toast.classList.remove('translate-y-10', 'opacity-0');
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+            }, 3500);
+        }
+
+        document.getElementById('mockupForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const icon = document.getElementById('loadingIcon');
+            const ep = document.getElementById('endpoint').value;
+            const resultBox = document.getElementById('result');
+            
+            btn.querySelector('span').innerText = "PROCESSING...";
+            btn.classList.add('opacity-80', 'cursor-not-allowed');
+            icon.classList.remove('hidden');
+            resultBox.classList.add('hidden', 'opacity-0');
+
+            const formData = new FormData(e.target);
+            try {
+                showToast("Uploading data...", "success");
+                
+                const res = await fetch('/api/generate', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if(data.success) {
+                    showToast("Task completed!", "success");
+                    
+                    generatedResults[ep] = data.imageUrl;
+
+                    resultBox.classList.remove('hidden');
+                    setTimeout(() => resultBox.classList.remove('opacity-0'), 50);
+                    
+                    const mediaContainer = document.getElementById('mediaContainer');
+                    
+                    if(ep === '/maker/bratvid') {
+                        mediaContainer.innerHTML = `<video controls autoplay loop class="w-full max-h-[400px] object-contain rounded-lg"><source src="${data.imageUrl}" type="video/mp4"></video>`;
+                    } else {
+                        mediaContainer.innerHTML = `<img src="${data.imageUrl}" class="w-full max-h-[400px] object-contain rounded-lg">`;
+                    }
+                    
+                    document.getElementById('downloadBtn').href = '/api/download?url=' + encodeURIComponent(data.imageUrl);
+                } else {
+                    showToast("Error: " + data.message, "error");
+                }
+            } catch (err) {
+                showToast("System error / network failure.", "error");
+            } finally {
+                btn.querySelector('span').innerText = "EXECUTE PROCESS";
+                btn.classList.remove('opacity-80', 'cursor-not-allowed');
+                icon.classList.add('hidden');
+            }
+        };
+
+        updateFields(); 
+    </script>
+</body>
+</html> 
